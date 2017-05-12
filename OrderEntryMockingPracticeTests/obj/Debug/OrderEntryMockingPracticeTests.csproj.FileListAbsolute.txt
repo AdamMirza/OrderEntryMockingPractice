@@ -1,0 +1,11 @@
+C:\Users\AdamM\Documents\OrderEntryMockingPractice\OrderEntryMockingPracticeTests\bin\Debug\OrderEntryMockingPracticeTests.dll
+C:\Users\AdamM\Documents\OrderEntryMockingPractice\OrderEntryMockingPracticeTests\bin\Debug\OrderEntryMockingPracticeTests.pdb
+C:\Users\AdamM\Documents\OrderEntryMockingPractice\OrderEntryMockingPracticeTests\bin\Debug\nunit.framework.dll
+C:\Users\AdamM\Documents\OrderEntryMockingPractice\OrderEntryMockingPracticeTests\bin\Debug\OrderEntryMockingPractice.dll
+C:\Users\AdamM\Documents\OrderEntryMockingPractice\OrderEntryMockingPracticeTests\bin\Debug\Rhino.Mocks.dll
+C:\Users\AdamM\Documents\OrderEntryMockingPractice\OrderEntryMockingPracticeTests\bin\Debug\OrderEntryMockingPractice.pdb
+C:\Users\AdamM\Documents\OrderEntryMockingPractice\OrderEntryMockingPracticeTests\bin\Debug\nunit.framework.xml
+C:\Users\AdamM\Documents\OrderEntryMockingPractice\OrderEntryMockingPracticeTests\bin\Debug\Rhino.Mocks.xml
+C:\Users\AdamM\Documents\OrderEntryMockingPractice\OrderEntryMockingPracticeTests\obj\Debug\OrderEntryMockingPracticeTests.csprojResolveAssemblyReference.cache
+C:\Users\AdamM\Documents\OrderEntryMockingPractice\OrderEntryMockingPracticeTests\obj\Debug\OrderEntryMockingPracticeTests.dll
+C:\Users\AdamM\Documents\OrderEntryMockingPractice\OrderEntryMockingPracticeTests\obj\Debug\OrderEntryMockingPracticeTests.pdb
