@@ -114,5 +114,27 @@ namespace OrderEntryMockingPracticeTests
             // Assert
             Assert.That(orderSummary.OrderNumber, Is.EqualTo(orderNumber));
         }
+
+        [Test]
+        public void PlaceOrder_OrderValid_SummaryReturnedWithOrderFulfillmentServiceId()
+        {
+            // Arrange
+            _mockProductRepository.Stub(p => p.IsInStock("1")).Return(true);
+
+            const int orderId = 123;
+
+            var orderConfirmation = new OrderConfirmation()
+            {
+                OrderId = orderId
+            };
+
+            _mockOrderFulfillmentService.Stub(o => o.Fulfill(_order)).Return(orderConfirmation);
+
+            // Act
+            var orderSummary = _orderService.PlaceOrder(_order);
+
+            // Assert
+            Assert.That(orderSummary.OrderNumber, Is.EqualTo(orderId));
+        }
     }
 }

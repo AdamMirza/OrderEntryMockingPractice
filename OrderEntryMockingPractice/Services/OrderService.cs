@@ -25,7 +25,8 @@ namespace OrderEntryMockingPractice.Services
 
             return new OrderSummary()
             {
-                OrderNumber = confirmation.OrderNumber
+                OrderNumber = confirmation.OrderNumber,
+                OrderId = confirmation.OrderId
             };
         }
 
