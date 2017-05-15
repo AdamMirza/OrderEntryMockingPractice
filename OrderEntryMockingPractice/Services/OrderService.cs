@@ -8,22 +8,30 @@ namespace OrderEntryMockingPractice.Services
     public class OrderService
     {
         private readonly IProductRepository _productRepository;
+        private readonly IOrderFulfillmentService _orderFulfillmentService;
 
-        public OrderService(IProductRepository productRepository)
+        public OrderService(IProductRepository productRepository,
+                            IOrderFulfillmentService orderFulfillmentService)
         {
-            this._productRepository = productRepository;
+            _productRepository = productRepository;
+            _orderFulfillmentService = orderFulfillmentService;
         }
 
         public OrderSummary PlaceOrder(Order order)
         {
             CheckIfOrderIsValid(order);
 
-            return null;
+            var confirmation = _orderFulfillmentService.Fulfill(order);
+
+            return new OrderSummary()
+            {
+                OrderNumber = confirmation.OrderNumber
+            };
         }
 
         private void CheckIfOrderIsValid(Order order)
         {
-            List<string> productSkus = new List<string>();
+            var productSkus = new List<string>();
 
             foreach (var item in order.OrderItems)
             {
