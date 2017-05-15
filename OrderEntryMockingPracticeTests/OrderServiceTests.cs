@@ -134,7 +134,7 @@ namespace OrderEntryMockingPracticeTests
             var orderSummary = _orderService.PlaceOrder(_order);
 
             // Assert
-            Assert.That(orderSummary.OrderNumber, Is.EqualTo(orderId));
+            Assert.That(orderSummary.OrderId, Is.EqualTo(orderId));
         }
     }
 }
