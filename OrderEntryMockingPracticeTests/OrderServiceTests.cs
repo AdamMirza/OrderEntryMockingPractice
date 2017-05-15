@@ -10,10 +10,14 @@ namespace OrderEntryMockingPracticeTests
     public class OrderServiceTests
     {
         private OrderService _orderService;
+
+        private const int _customerID = 1;
+        private Customer _customer;
         private Order _order;
         private OrderItem _orderItem;
         private IProductRepository _mockProductRepository;
         private IOrderFulfillmentService _mockOrderFulfillmentService;
+        private ICustomerRepository _mockCustomerRepository;
 
         [SetUp]
         public void SetUp()
@@ -21,10 +25,14 @@ namespace OrderEntryMockingPracticeTests
             // Arrange
             _mockProductRepository = MockRepository.GenerateMock<IProductRepository>();
             _mockOrderFulfillmentService = MockRepository.GenerateMock<IOrderFulfillmentService>();
+            _mockCustomerRepository = MockRepository.GenerateMock<ICustomerRepository>();
 
             CreateOrderWithOneItem();
 
-            _orderService = new OrderService(_mockProductRepository, _mockOrderFulfillmentService);
+            _orderService = new OrderService(_customerID,
+                                             _mockProductRepository,
+                                             _mockOrderFulfillmentService,
+                                             _mockCustomerRepository);
         }
 
         private void CreateOrderWithOneItem()
@@ -136,5 +144,26 @@ namespace OrderEntryMockingPracticeTests
             // Assert
             Assert.That(orderSummary.OrderId, Is.EqualTo(orderId));
         }
+
+        [Test]
+        public void PlaceOrder_OrderValid_GetsCustomerInfo()
+        {
+            // Arrange
+            _mockProductRepository.Stub(p => p.IsInStock("1")).Return(true);
+
+            _customer = new Customer() { CustomerId = _customerID };
+            _mockCustomerRepository.Stub(c => c.Get(_customerID)).Return(_customer);
+
+            var orderConfirmation = new OrderConfirmation();
+            _mockOrderFulfillmentService.Stub(o => o.Fulfill(_order)).Return(orderConfirmation);
+
+            // Act
+            var orderSummary = _orderService.PlaceOrder(_order);
+
+            // Assert
+            _mockCustomerRepository.AssertWasCalled(c => c.Get(_customerID));
+            Assert.That(orderSummary.CustomerId, Is.EqualTo(_customerID));
+        }
+
     }
 }

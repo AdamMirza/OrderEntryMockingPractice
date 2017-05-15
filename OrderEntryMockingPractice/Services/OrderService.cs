@@ -9,22 +9,32 @@ namespace OrderEntryMockingPractice.Services
     {
         private readonly IProductRepository _productRepository;
         private readonly IOrderFulfillmentService _orderFulfillmentService;
+        private readonly ICustomerRepository _customerRepository;
 
-        public OrderService(IProductRepository productRepository,
-                            IOrderFulfillmentService orderFulfillmentService)
+        private Customer _customer;
+        private int _customerId;
+
+        public OrderService(int customerId,
+                            IProductRepository productRepository,
+                            IOrderFulfillmentService orderFulfillmentService,
+                            ICustomerRepository customerRepository)
         {
+            _customerId = customerId;
+            _customer = customerRepository.Get(customerId);
             _productRepository = productRepository;
             _orderFulfillmentService = orderFulfillmentService;
+            _customerRepository = customerRepository;
         }
 
         public OrderSummary PlaceOrder(Order order)
         {
             CheckIfOrderIsValid(order);
-
+            
             var confirmation = _orderFulfillmentService.Fulfill(order);
 
             return new OrderSummary()
             {
+                CustomerId = _customerId,
                 OrderNumber = confirmation.OrderNumber,
                 OrderId = confirmation.OrderId
             };
