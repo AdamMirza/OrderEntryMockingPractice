@@ -11,7 +11,7 @@ namespace OrderEntryMockingPracticeTests
     {
         private OrderService _orderService;
 
-        private const int _customerID = 1;
+        private const int CustomerId = 1;
         private Customer _customer;
         private Order _order;
         private OrderItem _orderItem;
@@ -29,7 +29,7 @@ namespace OrderEntryMockingPracticeTests
 
             CreateOrderWithOneItem();
 
-            _orderService = new OrderService(_customerID,
+            _orderService = new OrderService(CustomerId,
                                              _mockProductRepository,
                                              _mockOrderFulfillmentService,
                                              _mockCustomerRepository);
@@ -54,18 +54,9 @@ namespace OrderEntryMockingPracticeTests
         public void PlaceOrder_NonUniqueProductSkus_ExceptionThrownWithInfo()
         {
             // Arrange
-            _mockProductRepository.Stub(p => p.IsInStock("1")).Return(true);
+            StubProductRepository(true, "1");
+            AddItemToOrderItems("1");
 
-            var orderItem2 = new OrderItem
-            {
-                Product = new Product
-                {
-                    Sku = "1"
-                }
-            };
-
-            _order.OrderItems.Add(orderItem2);
-            
             // Act
             var exceptionMessage = Assert.Throws<Exception>(() => _orderService.PlaceOrder(_order));
 
@@ -73,11 +64,29 @@ namespace OrderEntryMockingPracticeTests
             Assert.That(exceptionMessage.Message, Is.EqualTo("Order Items are not unique by Product SKU."));
         }
 
+        private void AddItemToOrderItems(string sku)
+        {
+            var orderItem = new OrderItem
+            {
+                Product = new Product
+                {
+                    Sku = sku
+                }
+            };
+
+            _order.OrderItems.Add(orderItem);
+        }
+
+        private void StubProductRepository(bool isInStock, string sku)
+        {
+            _mockProductRepository.Stub(p => p.IsInStock(sku)).Return(isInStock);
+        }
+
         [Test]
         public void PlaceOrder_ProductNotInStock_ExceptionThrownWithInfo()
         {
             // Arrange
-            _mockProductRepository.Stub(p => p.IsInStock("1")).Return(false);
+            StubProductRepository(false, "1");
 
             // Act
             var exceptionMessage = Assert.Throws<Exception>(() => _orderService.PlaceOrder(_order));
@@ -90,8 +99,8 @@ namespace OrderEntryMockingPracticeTests
         public void PlaceOrder_OrderValid_SubmitsOrderToOrderFulfillmentService()
         {
             // Arrange
-            _mockProductRepository.Stub(p => p.IsInStock("1")).Return(true);
-            _mockOrderFulfillmentService.Stub(o => o.Fulfill(_order));
+            StubProductRepository(true, "1");
+            StubFulfillOrder(new OrderConfirmation());
 
             // Act
             _orderService.PlaceOrder(_order);
@@ -105,7 +114,7 @@ namespace OrderEntryMockingPracticeTests
         public void PlaceOrder_OrderValid_OrderSummaryReturnedWithOrderFulfillmentConfirmationNumber()
         {
             // Arrange
-            _mockProductRepository.Stub(p => p.IsInStock("1")).Return(true);
+            StubProductRepository(true, "1");
 
             const string orderNumber = "123";
 
@@ -114,7 +123,7 @@ namespace OrderEntryMockingPracticeTests
                 OrderNumber = orderNumber
             };
 
-            _mockOrderFulfillmentService.Stub(o => o.Fulfill(_order)).Return(orderConfirmation);
+            StubFulfillOrder(orderConfirmation);
 
             // Act
             var orderSummary = _orderService.PlaceOrder(_order);
@@ -127,16 +136,15 @@ namespace OrderEntryMockingPracticeTests
         public void PlaceOrder_OrderValid_SummaryReturnedWithOrderFulfillmentServiceId()
         {
             // Arrange
-            _mockProductRepository.Stub(p => p.IsInStock("1")).Return(true);
+            StubProductRepository(true, "1");
 
             const int orderId = 123;
-
             var orderConfirmation = new OrderConfirmation()
             {
                 OrderId = orderId
             };
 
-            _mockOrderFulfillmentService.Stub(o => o.Fulfill(_order)).Return(orderConfirmation);
+            StubFulfillOrder(orderConfirmation);
 
             // Act
             var orderSummary = _orderService.PlaceOrder(_order);
@@ -146,24 +154,27 @@ namespace OrderEntryMockingPracticeTests
         }
 
         [Test]
-        public void PlaceOrder_OrderValid_GetsCustomerInfo()
+        public void PlaceOrder_CustomerValid_GetsCustomerInfo()
         {
             // Arrange
-            _mockProductRepository.Stub(p => p.IsInStock("1")).Return(true);
+            StubProductRepository(true, "1");
 
-            _customer = new Customer() { CustomerId = _customerID };
-            _mockCustomerRepository.Stub(c => c.Get(_customerID)).Return(_customer);
+            _customer = new Customer() { CustomerId = CustomerId };
+            _mockCustomerRepository.Stub(c => c.Get(CustomerId)).Return(_customer);
 
-            var orderConfirmation = new OrderConfirmation();
-            _mockOrderFulfillmentService.Stub(o => o.Fulfill(_order)).Return(orderConfirmation);
+            StubFulfillOrder(new OrderConfirmation());
 
             // Act
             var orderSummary = _orderService.PlaceOrder(_order);
 
             // Assert
-            _mockCustomerRepository.AssertWasCalled(c => c.Get(_customerID));
-            Assert.That(orderSummary.CustomerId, Is.EqualTo(_customerID));
+            _mockCustomerRepository.AssertWasCalled(c => c.Get(CustomerId));
+            Assert.That(orderSummary.CustomerId, Is.EqualTo(CustomerId));
         }
 
+        private void StubFulfillOrder(OrderConfirmation orderConfirmation)
+        {
+            _mockOrderFulfillmentService.Stub(o => o.Fulfill(_order)).Return(orderConfirmation);
+        }
     }
 }
