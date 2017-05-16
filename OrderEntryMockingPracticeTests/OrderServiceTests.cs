@@ -255,5 +255,35 @@ namespace OrderEntryMockingPracticeTests
 
             Assert.That(orderSummary.NetTotal, Is.EqualTo(netTotal));
         }
+
+        [Test]
+        public void PlaceOrder_ValidOrderMultipleItems_NetTotal()
+        {
+            // Arrange
+            var secondarySku = "SKU-0020";
+            StubProductRepository(true, SkuConstString);
+            StubProductRepository(true, secondarySku);
+            StubGetStandardCustomerFromRepository();
+            StubFulfillOrder(new OrderConfirmation());
+
+            // Act
+            _orderItem = new OrderItem
+            {
+                Product = new Product
+                {
+                    Sku = secondarySku,
+                    Price = 5.0m
+                },
+                Quantity = 2
+            };
+
+            // Act
+            var orderSummary = _orderService.PlaceOrder(_order);
+
+            // Assert
+            var netTotal = _order.OrderItems.Sum(orderItem => orderItem.Quantity * orderItem.Product.Price);
+
+            Assert.That(orderSummary.NetTotal, Is.EqualTo(netTotal));
+        }
     }
 }
