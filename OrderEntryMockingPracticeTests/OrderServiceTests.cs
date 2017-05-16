@@ -3,6 +3,7 @@ using NUnit.Framework;
 using OrderEntryMockingPractice.Models;
 using OrderEntryMockingPractice.Services;
 using Rhino.Mocks;
+using System.Collections.Generic;
 
 namespace OrderEntryMockingPracticeTests
 {
@@ -11,13 +12,17 @@ namespace OrderEntryMockingPracticeTests
     {
         private OrderService _orderService;
 
-        private const int CustomerId = 1;
-        private Customer _customer;
+        private const int CustomerIdConstInt = 8675;
+        private const string SkuConstString = "SKU-001";
+        private const string CountryConstString = "USA";
+        private const string PostalCodeConstString = "98101";
+
         private Order _order;
         private OrderItem _orderItem;
         private IProductRepository _mockProductRepository;
         private IOrderFulfillmentService _mockOrderFulfillmentService;
         private ICustomerRepository _mockCustomerRepository;
+        private ITaxRateService _mockTaxRateService;
 
         [SetUp]
         public void SetUp()
@@ -26,13 +31,15 @@ namespace OrderEntryMockingPracticeTests
             _mockProductRepository = MockRepository.GenerateMock<IProductRepository>();
             _mockOrderFulfillmentService = MockRepository.GenerateMock<IOrderFulfillmentService>();
             _mockCustomerRepository = MockRepository.GenerateMock<ICustomerRepository>();
+            _mockTaxRateService = MockRepository.GenerateMock<ITaxRateService>();
 
             CreateOrderWithOneItem();
 
-            _orderService = new OrderService(CustomerId,
+            _orderService = new OrderService(CustomerIdConstInt,
                                              _mockProductRepository,
                                              _mockOrderFulfillmentService,
-                                             _mockCustomerRepository);
+                                             _mockCustomerRepository,
+                                             _mockTaxRateService);
         }
 
         private void CreateOrderWithOneItem()
@@ -43,7 +50,7 @@ namespace OrderEntryMockingPracticeTests
             {
                 Product = new Product
                 {
-                    Sku = "1"
+                    Sku = SkuConstString
                 }
             };
 
@@ -54,8 +61,8 @@ namespace OrderEntryMockingPracticeTests
         public void PlaceOrder_NonUniqueProductSkus_ExceptionThrownWithInfo()
         {
             // Arrange
-            StubProductRepository(true, "1");
-            AddItemToOrderItems("1");
+            StubProductRepository(true, SkuConstString);
+            AddItemToOrderItems(SkuConstString);
 
             // Act
             var exceptionMessage = Assert.Throws<Exception>(() => _orderService.PlaceOrder(_order));
@@ -86,7 +93,7 @@ namespace OrderEntryMockingPracticeTests
         public void PlaceOrder_ProductNotInStock_ExceptionThrownWithInfo()
         {
             // Arrange
-            StubProductRepository(false, "1");
+            StubProductRepository(false, SkuConstString);
 
             // Act
             var exceptionMessage = Assert.Throws<Exception>(() => _orderService.PlaceOrder(_order));
@@ -99,8 +106,15 @@ namespace OrderEntryMockingPracticeTests
         public void PlaceOrder_OrderValid_SubmitsOrderToOrderFulfillmentService()
         {
             // Arrange
-            StubProductRepository(true, "1");
+            StubProductRepository(true, SkuConstString);
             StubFulfillOrder(new OrderConfirmation());
+
+            StubGetCustomerFromRepository(
+                new Customer
+                {
+                    Country = CountryConstString,
+                    PostalCode = PostalCodeConstString
+                });
 
             // Act
             _orderService.PlaceOrder(_order);
@@ -114,16 +128,22 @@ namespace OrderEntryMockingPracticeTests
         public void PlaceOrder_OrderValid_OrderSummaryReturnedWithOrderFulfillmentConfirmationNumber()
         {
             // Arrange
-            StubProductRepository(true, "1");
+            StubProductRepository(true, SkuConstString);
 
             const string orderNumber = "123";
 
-            var orderConfirmation = new OrderConfirmation()
+            var orderConfirmation = new OrderConfirmation
             {
                 OrderNumber = orderNumber
             };
 
             StubFulfillOrder(orderConfirmation);
+            StubGetCustomerFromRepository(
+                new Customer
+            {
+                Country = CountryConstString,
+                PostalCode = PostalCodeConstString
+            });
 
             // Act
             var orderSummary = _orderService.PlaceOrder(_order);
@@ -136,15 +156,22 @@ namespace OrderEntryMockingPracticeTests
         public void PlaceOrder_OrderValid_SummaryReturnedWithOrderFulfillmentServiceId()
         {
             // Arrange
-            StubProductRepository(true, "1");
+            StubProductRepository(true, SkuConstString);
 
             const int orderId = 123;
-            var orderConfirmation = new OrderConfirmation()
+            var orderConfirmation = new OrderConfirmation
             {
                 OrderId = orderId
             };
 
             StubFulfillOrder(orderConfirmation);
+
+            StubGetCustomerFromRepository(
+                new Customer
+                {
+                    Country = CountryConstString,
+                    PostalCode = PostalCodeConstString
+                });
 
             // Act
             var orderSummary = _orderService.PlaceOrder(_order);
@@ -157,24 +184,74 @@ namespace OrderEntryMockingPracticeTests
         public void PlaceOrder_CustomerValid_GetsCustomerInfo()
         {
             // Arrange
-            StubProductRepository(true, "1");
-
-            _customer = new Customer() { CustomerId = CustomerId };
-            _mockCustomerRepository.Stub(c => c.Get(CustomerId)).Return(_customer);
-
+            StubProductRepository(true, SkuConstString);
+            StubGetCustomerFromRepository(new Customer { CustomerId = CustomerIdConstInt });
             StubFulfillOrder(new OrderConfirmation());
 
             // Act
             var orderSummary = _orderService.PlaceOrder(_order);
 
             // Assert
-            _mockCustomerRepository.AssertWasCalled(c => c.Get(CustomerId));
-            Assert.That(orderSummary.CustomerId, Is.EqualTo(CustomerId));
+            _mockCustomerRepository.AssertWasCalled(c => c.Get(CustomerIdConstInt));
+            Assert.That(orderSummary.CustomerId, Is.EqualTo(CustomerIdConstInt));
+        }
+
+        private void StubGetCustomerFromRepository(Customer customer)
+        {
+            _mockCustomerRepository.Stub(c => c.Get(CustomerIdConstInt)).Return(customer);
         }
 
         private void StubFulfillOrder(OrderConfirmation orderConfirmation)
         {
             _mockOrderFulfillmentService.Stub(o => o.Fulfill(_order)).Return(orderConfirmation);
+        }
+
+        [Test]
+        public void PlaceOrder_CustomerValid_GetsTaxInfo()
+        {
+            // Arrange
+            StubProductRepository(true, SkuConstString);
+
+            var country = "USA";
+            var postalCode = "98101";
+
+            var customer = new Customer
+            {
+                CustomerId = CustomerIdConstInt,
+                Country = country,
+                PostalCode = postalCode
+            };
+
+            StubGetCustomerFromRepository(customer);
+
+            var orderConfirmation = new OrderConfirmation
+            {
+                CustomerId = CustomerIdConstInt
+            };
+            StubFulfillOrder(orderConfirmation);
+
+            var taxList = new List<TaxEntry>
+            {
+                new TaxEntry
+                {
+                    Description = "First entry.",
+                    Rate = 2.3m
+                },
+                new TaxEntry()
+                {
+                    Description = "Second entry.",
+                    Rate = 0.098m
+                }
+            };
+
+            _mockTaxRateService.Stub(t => t.GetTaxEntries(postalCode, country)).Return(taxList);
+
+            // Act
+            var orderSummary = _orderService.PlaceOrder(_order);
+
+            // Assert
+            _mockTaxRateService.AssertWasCalled(t => t.GetTaxEntries(postalCode, country));
+            Assert.That(orderSummary.Taxes, Is.EqualTo(taxList));
         }
     }
 }
