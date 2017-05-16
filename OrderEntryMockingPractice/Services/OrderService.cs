@@ -15,6 +15,8 @@ namespace OrderEntryMockingPractice.Services
         
         private int _customerId;
 
+        private const int ShippingDuration = 7;
+
         public OrderService(int customerId,
                             IProductRepository productRepository,
                             IOrderFulfillmentService orderFulfillmentService,
@@ -53,9 +55,11 @@ namespace OrderEntryMockingPractice.Services
                 CustomerId = _customerId,
                 OrderNumber = confirmation.OrderNumber,
                 OrderId = confirmation.OrderId,
+                OrderItems = order.OrderItems,
                 NetTotal = netTotal,
                 Taxes = taxEntries,
-                Total = total
+                Total = total,
+                EstimatedDeliveryDate = DateTime.Now.AddDays(7).Date
             };
         }
 

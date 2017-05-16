@@ -20,6 +20,7 @@ namespace OrderEntryMockingPracticeTests
         private const string PostalCodeConstString = "98101";
         private const decimal FirstProductPriceConstDecimal = 3.0m;
         private const int FirstProductQuantityConstInt = 4;
+        private const decimal TaxRateConstDecimal = 2.3m;
 
         private Order _order;
         private OrderItem _orderItem;
@@ -27,6 +28,7 @@ namespace OrderEntryMockingPracticeTests
         private IOrderFulfillmentService _mockOrderFulfillmentService;
         private ICustomerRepository _mockCustomerRepository;
         private ITaxRateService _mockTaxRateService;
+        private IEnumerable<TaxEntry> _taxList;
         private IEmailService _mockEmailService;
 
         [SetUp]
@@ -251,16 +253,20 @@ namespace OrderEntryMockingPracticeTests
         {
             if (taxList == null)
             {
-                taxList = new List<TaxEntry>
+                _taxList = new List<TaxEntry>
                 {
                     new TaxEntry
                     {
                         Description = "First entry",
-                        Rate = 2.3m
+                        Rate = TaxRateConstDecimal
                     }
                 };
             }
-            _mockTaxRateService.Stub(t => t.GetTaxEntries(PostalCodeConstString, CountryConstString)).Return(taxList);
+            else
+            {
+                _taxList = taxList;
+            }
+            _mockTaxRateService.Stub(t => t.GetTaxEntries(PostalCodeConstString, CountryConstString)).Return(_taxList);
         }
 
         [Test]
@@ -322,22 +328,13 @@ namespace OrderEntryMockingPracticeTests
 
             const decimal taxRate = 2.3m;
 
-            var taxList = new List<TaxEntry>
-            {
-                new TaxEntry
-                {
-                    Description = "First entry",
-                    Rate = 2.3m
-                }
-            };
-
-            StubTaxRateService(taxList);
+            StubTaxRateService(null);
 
             // Act
             var orderSummary = _orderService.PlaceOrder(_order);
 
             // Arrange
-            var total = orderSummary.NetTotal * taxRate;
+            var total = orderSummary.NetTotal * TaxRateConstDecimal;
 
             Assert.That(orderSummary.Total, Is.EqualTo(total));
         }
@@ -399,7 +396,7 @@ namespace OrderEntryMockingPracticeTests
             const int orderId = 538;
             StubFulfillOrder(new OrderConfirmation
             {
-                OrderId = 538
+                OrderId = orderId
             });
             StubTaxRateService(null);
 
@@ -408,6 +405,39 @@ namespace OrderEntryMockingPracticeTests
 
             // Assert
             _mockEmailService.AssertWasCalled(e => e.SendOrderConfirmationEmail(CustomerIdConstInt, orderId));
+        }
+
+        [Test]
+        public void PlaceOrder_FullValidOrder_FullOrderSummary()
+        {
+            StubProductRepository(true, SkuConstString);
+            StubGetStandardCustomerFromRepository();
+
+            const int orderId = 538;
+            const string orderNumber = "ORD-2209";
+            StubFulfillOrder(new OrderConfirmation
+            {
+                OrderId = orderId,
+                CustomerId = CustomerIdConstInt,
+                OrderNumber = orderNumber
+            });
+            StubTaxRateService(null);
+
+            // Act
+            var orderSummary = _orderService.PlaceOrder(_order);
+
+            // Assert
+            var netTotal = _order.OrderItems.Sum(orderItem => orderItem.Quantity * orderItem.Product.Price);
+            var total = netTotal * TaxRateConstDecimal;
+
+            Assert.That(orderSummary.OrderId, Is.EqualTo(orderId));
+            Assert.That(orderSummary.OrderNumber, Is.EqualTo(orderNumber));
+            Assert.That(orderSummary.CustomerId, Is.EqualTo(CustomerIdConstInt));
+            Assert.That(orderSummary.OrderItems, Is.EqualTo(_order.OrderItems));
+            Assert.That(orderSummary.NetTotal, Is.EqualTo(netTotal));
+            Assert.That(orderSummary.Taxes, Is.EqualTo(_taxList));
+            Assert.That(orderSummary.Total, Is.EqualTo(total));
+            Assert.That(orderSummary.EstimatedDeliveryDate, Is.EqualTo(DateTime.Now.AddDays(7).Date));
         }
     }
 }
