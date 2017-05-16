@@ -109,12 +109,7 @@ namespace OrderEntryMockingPracticeTests
             StubProductRepository(true, SkuConstString);
             StubFulfillOrder(new OrderConfirmation());
 
-            StubGetCustomerFromRepository(
-                new Customer
-                {
-                    Country = CountryConstString,
-                    PostalCode = PostalCodeConstString
-                });
+            StubGetStandardCustomerFromRepository();
 
             // Act
             _orderService.PlaceOrder(_order);
@@ -138,12 +133,7 @@ namespace OrderEntryMockingPracticeTests
             };
 
             StubFulfillOrder(orderConfirmation);
-            StubGetCustomerFromRepository(
-                new Customer
-            {
-                Country = CountryConstString,
-                PostalCode = PostalCodeConstString
-            });
+            StubGetStandardCustomerFromRepository();
 
             // Act
             var orderSummary = _orderService.PlaceOrder(_order);
@@ -166,12 +156,7 @@ namespace OrderEntryMockingPracticeTests
 
             StubFulfillOrder(orderConfirmation);
 
-            StubGetCustomerFromRepository(
-                new Customer
-                {
-                    Country = CountryConstString,
-                    PostalCode = PostalCodeConstString
-                });
+            StubGetStandardCustomerFromRepository();
 
             // Act
             var orderSummary = _orderService.PlaceOrder(_order);
@@ -185,7 +170,7 @@ namespace OrderEntryMockingPracticeTests
         {
             // Arrange
             StubProductRepository(true, SkuConstString);
-            StubGetCustomerFromRepository(new Customer { CustomerId = CustomerIdConstInt });
+            StubGetStandardCustomerFromRepository();
             StubFulfillOrder(new OrderConfirmation());
 
             // Act
@@ -196,8 +181,14 @@ namespace OrderEntryMockingPracticeTests
             Assert.That(orderSummary.CustomerId, Is.EqualTo(CustomerIdConstInt));
         }
 
-        private void StubGetCustomerFromRepository(Customer customer)
+        private void StubGetStandardCustomerFromRepository()
         {
+            var customer = new Customer
+            {
+                CustomerId = CustomerIdConstInt,
+                Country = CountryConstString,
+                PostalCode = PostalCodeConstString
+            };
             _mockCustomerRepository.Stub(c => c.Get(CustomerIdConstInt)).Return(customer);
         }
 
@@ -211,18 +202,7 @@ namespace OrderEntryMockingPracticeTests
         {
             // Arrange
             StubProductRepository(true, SkuConstString);
-
-            var country = "USA";
-            var postalCode = "98101";
-
-            var customer = new Customer
-            {
-                CustomerId = CustomerIdConstInt,
-                Country = country,
-                PostalCode = postalCode
-            };
-
-            StubGetCustomerFromRepository(customer);
+            StubGetStandardCustomerFromRepository();
 
             var orderConfirmation = new OrderConfirmation
             {
@@ -244,14 +224,21 @@ namespace OrderEntryMockingPracticeTests
                 }
             };
 
-            _mockTaxRateService.Stub(t => t.GetTaxEntries(postalCode, country)).Return(taxList);
+            _mockTaxRateService.Stub(t => t.GetTaxEntries(PostalCodeConstString, CountryConstString)).Return(taxList);
 
             // Act
             var orderSummary = _orderService.PlaceOrder(_order);
 
             // Assert
-            _mockTaxRateService.AssertWasCalled(t => t.GetTaxEntries(postalCode, country));
+            _mockTaxRateService.AssertWasCalled(t => t.GetTaxEntries(PostalCodeConstString, CountryConstString));
             Assert.That(orderSummary.Taxes, Is.EqualTo(taxList));
+        }
+
+        [Test]
+        public void PlaceOrder_ValidOrder_NetTotal()
+        {
+            // Arrange
+            StubProductRepository(true, SkuConstString);
         }
     }
 }
