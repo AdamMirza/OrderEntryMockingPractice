@@ -5,6 +5,7 @@ using OrderEntryMockingPractice.Services;
 using Rhino.Mocks;
 using System.Collections.Generic;
 using System.Linq;
+using Rhino.Mocks.Interfaces;
 
 namespace OrderEntryMockingPracticeTests
 {
@@ -26,6 +27,7 @@ namespace OrderEntryMockingPracticeTests
         private IOrderFulfillmentService _mockOrderFulfillmentService;
         private ICustomerRepository _mockCustomerRepository;
         private ITaxRateService _mockTaxRateService;
+        private IEmailService _mockEmailService;
 
         [SetUp]
         public void SetUp()
@@ -35,6 +37,7 @@ namespace OrderEntryMockingPracticeTests
             _mockOrderFulfillmentService = MockRepository.GenerateMock<IOrderFulfillmentService>();
             _mockCustomerRepository = MockRepository.GenerateMock<ICustomerRepository>();
             _mockTaxRateService = MockRepository.GenerateMock<ITaxRateService>();
+            _mockEmailService = MockRepository.GenerateMock<IEmailService>();
 
             CreateOrderWithOneItem();
 
@@ -42,7 +45,8 @@ namespace OrderEntryMockingPracticeTests
                                              _mockProductRepository,
                                              _mockOrderFulfillmentService,
                                              _mockCustomerRepository,
-                                             _mockTaxRateService);
+                                             _mockTaxRateService,
+                                             _mockEmailService);
         }
 
         private void CreateOrderWithOneItem()
@@ -115,6 +119,7 @@ namespace OrderEntryMockingPracticeTests
             StubFulfillOrder(new OrderConfirmation());
 
             StubGetStandardCustomerFromRepository();
+            StubTaxRateService(null);
 
             // Act
             _orderService.PlaceOrder(_order);
@@ -139,6 +144,7 @@ namespace OrderEntryMockingPracticeTests
 
             StubFulfillOrder(orderConfirmation);
             StubGetStandardCustomerFromRepository();
+            StubTaxRateService(null);
 
             // Act
             var orderSummary = _orderService.PlaceOrder(_order);
@@ -160,7 +166,7 @@ namespace OrderEntryMockingPracticeTests
             };
 
             StubFulfillOrder(orderConfirmation);
-
+            StubTaxRateService(null);
             StubGetStandardCustomerFromRepository();
 
             // Act
@@ -177,6 +183,8 @@ namespace OrderEntryMockingPracticeTests
             StubProductRepository(true, SkuConstString);
             StubGetStandardCustomerFromRepository();
             StubFulfillOrder(new OrderConfirmation());
+
+            StubTaxRateService(null);
 
             // Act
             var orderSummary = _orderService.PlaceOrder(_order);
@@ -229,7 +237,7 @@ namespace OrderEntryMockingPracticeTests
                 }
             };
 
-            _mockTaxRateService.Stub(t => t.GetTaxEntries(PostalCodeConstString, CountryConstString)).Return(taxList);
+            StubTaxRateService(taxList);
 
             // Act
             var orderSummary = _orderService.PlaceOrder(_order);
@@ -239,6 +247,22 @@ namespace OrderEntryMockingPracticeTests
             Assert.That(orderSummary.Taxes, Is.EqualTo(taxList));
         }
 
+        private void StubTaxRateService(IEnumerable<TaxEntry> taxList)
+        {
+            if (taxList == null)
+            {
+                taxList = new List<TaxEntry>
+                {
+                    new TaxEntry
+                    {
+                        Description = "First entry",
+                        Rate = 2.3m
+                    }
+                };
+            }
+            _mockTaxRateService.Stub(t => t.GetTaxEntries(PostalCodeConstString, CountryConstString)).Return(taxList);
+        }
+
         [Test]
         public void PlaceOrder_ValidOrderOneItem_NetTotal()
         {
@@ -246,6 +270,7 @@ namespace OrderEntryMockingPracticeTests
             StubProductRepository(true, SkuConstString);
             StubGetStandardCustomerFromRepository();
             StubFulfillOrder(new OrderConfirmation());
+            StubTaxRateService(null);
 
             // Act
             var orderSummary = _orderService.PlaceOrder(_order);
@@ -266,7 +291,6 @@ namespace OrderEntryMockingPracticeTests
             StubGetStandardCustomerFromRepository();
             StubFulfillOrder(new OrderConfirmation());
 
-            // Act
             _orderItem = new OrderItem
             {
                 Product = new Product
@@ -277,6 +301,8 @@ namespace OrderEntryMockingPracticeTests
                 Quantity = 2
             };
 
+            StubTaxRateService(null);
+
             // Act
             var orderSummary = _orderService.PlaceOrder(_order);
 
@@ -284,6 +310,104 @@ namespace OrderEntryMockingPracticeTests
             var netTotal = _order.OrderItems.Sum(orderItem => orderItem.Quantity * orderItem.Product.Price);
 
             Assert.That(orderSummary.NetTotal, Is.EqualTo(netTotal));
+        }
+
+        [Test]
+        public void PlaceOrder_ValidOrderOneItem_Total()
+        {
+            // Arrange
+            StubProductRepository(true, SkuConstString);
+            StubGetStandardCustomerFromRepository();
+            StubFulfillOrder(new OrderConfirmation());
+
+            const decimal taxRate = 2.3m;
+
+            var taxList = new List<TaxEntry>
+            {
+                new TaxEntry
+                {
+                    Description = "First entry",
+                    Rate = 2.3m
+                }
+            };
+
+            StubTaxRateService(taxList);
+
+            // Act
+            var orderSummary = _orderService.PlaceOrder(_order);
+
+            // Arrange
+            var total = orderSummary.NetTotal * taxRate;
+
+            Assert.That(orderSummary.Total, Is.EqualTo(total));
+        }
+
+        [Test]
+        public void PlaceOrder_ValidOrderMultipleItemsMultipleTax_Total()
+        {
+            // Arrange
+            const string secondarySku = "SKU-0020";
+            StubProductRepository(true, SkuConstString);
+            StubProductRepository(true, secondarySku);
+            StubGetStandardCustomerFromRepository();
+            StubFulfillOrder(new OrderConfirmation());
+
+            _orderItem = new OrderItem
+            {
+                Product = new Product
+                {
+                    Sku = secondarySku,
+                    Price = 5.0m
+                },
+                Quantity = 2
+            };
+
+            const decimal firstTaxRate = 2.3m;
+            const decimal secondTaxRate = 0.8m;
+            var taxList = new List<TaxEntry>
+            {
+                new TaxEntry
+                {
+                    Description = "First entry",
+                    Rate = firstTaxRate
+                },
+                new TaxEntry()
+                {
+                    Description = "Second entry",
+                    Rate = secondTaxRate
+                }
+            };
+
+            StubTaxRateService(taxList);
+
+            // Act
+            var orderSummary = _orderService.PlaceOrder(_order);
+
+            // Arrange
+            var total = orderSummary.NetTotal * firstTaxRate + orderSummary.NetTotal * secondTaxRate;
+
+            Assert.That(orderSummary.Total, Is.EqualTo(total));
+        }
+
+        [Test]
+        public void PlaceOrder_ValidOrder_EmailConfirmationSent()
+        {
+            // Arrange
+            StubProductRepository(true, SkuConstString);
+            StubGetStandardCustomerFromRepository();
+
+            const int orderId = 538;
+            StubFulfillOrder(new OrderConfirmation
+            {
+                OrderId = 538
+            });
+            StubTaxRateService(null);
+
+            // Act
+            _orderService.PlaceOrder(_order);
+
+            // Assert
+            _mockEmailService.AssertWasCalled(e => e.SendOrderConfirmationEmail(CustomerIdConstInt, orderId));
         }
     }
 }
