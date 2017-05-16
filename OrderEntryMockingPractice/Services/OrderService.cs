@@ -37,11 +37,14 @@ namespace OrderEntryMockingPractice.Services
 
             var taxList = _taxRateService.GetTaxEntries(customer.PostalCode, customer.Country);
 
+            var netTotal = order.OrderItems.Sum(orderItem => orderItem.Quantity * orderItem.Product.Price);
+
             return new OrderSummary()
             {
                 CustomerId = _customerId,
                 OrderNumber = confirmation.OrderNumber,
                 OrderId = confirmation.OrderId,
+                NetTotal = netTotal,
                 Taxes = taxList
             };
         }

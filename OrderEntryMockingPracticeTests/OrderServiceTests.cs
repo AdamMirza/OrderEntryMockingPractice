@@ -4,6 +4,7 @@ using OrderEntryMockingPractice.Models;
 using OrderEntryMockingPractice.Services;
 using Rhino.Mocks;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace OrderEntryMockingPracticeTests
 {
@@ -16,6 +17,8 @@ namespace OrderEntryMockingPracticeTests
         private const string SkuConstString = "SKU-001";
         private const string CountryConstString = "USA";
         private const string PostalCodeConstString = "98101";
+        private const decimal FirstProductPriceConstDecimal = 3.0m;
+        private const int FirstProductQuantityConstInt = 4;
 
         private Order _order;
         private OrderItem _orderItem;
@@ -50,8 +53,10 @@ namespace OrderEntryMockingPracticeTests
             {
                 Product = new Product
                 {
-                    Sku = SkuConstString
-                }
+                    Sku = SkuConstString,
+                    Price = FirstProductPriceConstDecimal
+                },
+                Quantity = FirstProductQuantityConstInt
             };
 
             _order.OrderItems.Add(_orderItem);
@@ -235,10 +240,20 @@ namespace OrderEntryMockingPracticeTests
         }
 
         [Test]
-        public void PlaceOrder_ValidOrder_NetTotal()
+        public void PlaceOrder_ValidOrderOneItem_NetTotal()
         {
             // Arrange
             StubProductRepository(true, SkuConstString);
+            StubGetStandardCustomerFromRepository();
+            StubFulfillOrder(new OrderConfirmation());
+
+            // Act
+            var orderSummary = _orderService.PlaceOrder(_order);
+
+            // Assert
+            var netTotal = _order.OrderItems.Sum(orderItem => orderItem.Quantity * orderItem.Product.Price);
+
+            Assert.That(orderSummary.NetTotal, Is.EqualTo(netTotal));
         }
     }
 }
